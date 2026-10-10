@@ -1,0 +1,14 @@
+{
+  "aoi": {
+    "tipo": "punto_radio",
+    "latitud": -12.6,
+    "longitud": -69.2,
+    "radio_km": 10
+  },
+  "fecha_inicio": "2025-01-01",
+  "fecha_fin": "2025-12-31",
+  "orbita": "ASCENDENTE",
+  "max_resultados": 0,
+  "escala_m": 10,
+  "orbita_relativa": null
+}

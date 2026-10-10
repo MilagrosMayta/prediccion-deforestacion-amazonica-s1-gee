@@ -1,0 +1,14 @@
+{
+  "type": "Feature",
+  "properties": {"nombre": "AOI_ejemplo"},
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-69.30, -12.70],
+      [-69.10, -12.70],
+      [-69.10, -12.50],
+      [-69.30, -12.50],
+      [-69.30, -12.70]
+    ]]
+  }
+}

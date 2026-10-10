@@ -1,0 +1,12 @@
+{
+  "fecha_inicio": "2018-01-01",
+  "fecha_fin": "2025-12-31",
+  "lado_km": 30,
+  "orbita_relativa": "AUTO",
+  "zonas": [
+    {"codigo": "MD_IB_01", "nombre": "Iberia - frente Tahuamanu", "departamento": "Madre de Dios", "latitud": -11.4351, "longitud": -69.6793},
+    {"codigo": "MD_IN_01", "nombre": "Inambari / entorno de La Pampa", "departamento": "Madre de Dios", "latitud": -12.9767, "longitud": -69.9388},
+    {"codigo": "UC_NR_01", "nombre": "Nueva Requena", "departamento": "Ucayali", "latitud": -8.30951, "longitud": -74.86254},
+    {"codigo": "UC_MA_01", "nombre": "Masisea", "departamento": "Ucayali", "latitud": -8.6052, "longitud": -74.30633}
+  ]
+}

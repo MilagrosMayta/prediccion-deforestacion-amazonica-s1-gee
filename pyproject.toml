@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deforest-gee"
+version = "0.3.0"
+description = "CLI de investigación para adquisición Sentinel-1 mediante Google Earth Engine"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "earthengine-api==1.7.47",
+]
+
+[project.optional-dependencies]
+local = [
+  "numpy>=2.0,<3",
+  "rasterio>=1.4,<2",
+  "xarray>=2025.1",
+  "geopandas>=1.1,<2",
+  "pandas>=2.2,<4",
+]
+ml = [
+  "numpy>=2.0,<3",
+  "pandas>=2.2,<4",
+  "scikit-learn>=1.9,<2",
+  "joblib>=1.4,<2",
+]
+torch = ["torch"]
+tensorflow = ["tensorflow"]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+deforest-gee = "deforest_gee.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

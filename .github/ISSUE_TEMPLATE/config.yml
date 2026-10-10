@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Consulta metodológica
+    url: https://github.com/
+    about: Para decisiones científicas, usar el canal interno del equipo y documentar después la decisión en el repositorio.

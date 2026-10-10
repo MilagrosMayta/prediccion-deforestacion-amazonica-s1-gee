@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Credenciales / entorno
+.env
+*.json.key
+service-account*.json
+credentials*.json
+
+# IDE
+.vscode/
+.idea/
+
+# Datos pesados / resultados
+outputs/*
+!outputs/.gitkeep
+downloads/*
+!downloads/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+*.tif
+*.tiff
+*.SAFE/
+*.zip
+
+# Modelos
+*.joblib
+*.pt
+*.pth
+*.keras
+*.h5
+
+# Sistema
+.DS_Store
+Thumbs.db
