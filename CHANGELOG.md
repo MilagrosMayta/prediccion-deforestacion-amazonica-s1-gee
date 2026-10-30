@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## Sin publicar
+
+- `descarga-masiva` cumple los requisitos del entrenamiento ConvLSTM: una carpeta de Drive por lugar, archivos `L001_01…` por fecha, solo ASCENDING + IW + GRD + VV con una única órbita relativa (se rechaza cualquier escena que no cumpla), y solo la banda VV.
+- Todas las exportaciones son de 256×256 px con grilla UTM explícita (`crsTransform`); `lado_km` > 2,56 se rechaza.
+- Nuevos `verificar-coregistro` y `exportar-png` (PNG gris sin ejes). Pillow pasa al extra `[local]`.
+- Zonas renombradas a `L001…L004`. El catálogo cambia de formato (columna `nombre`): hay que empezar con uno nuevo.
+
 ## 0.3.0
 
 - Nuevo `descarga-masiva`: varias zonas y años desde `config/zonas.json`, órbita relativa AUTO, carpetas de Drive por zona/año/órbita, lotes con reintentos, catálogo CSV reanudable y confirmación previa.

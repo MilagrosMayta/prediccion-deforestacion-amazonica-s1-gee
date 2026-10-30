@@ -12,11 +12,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .config import SearchConfig
+from .constants import LADO_PX, MODO_INSTRUMENTO, PASADA, PRODUCTO, RESOLUCION_METROS
 from .exporter import iniciar_exportaciones
 from .sentinel1 import obtener_resultados
 
 COLUMNAS = ["zona", "anio", "fecha_hora_utc", "system_index", "ee_id", "orbita", "orbita_relativa",
-            "carpeta_drive", "archivo", "task_id", "estado"]
+            "nombre", "carpeta_drive", "archivo", "task_id", "estado"]
 REINTENTOS = 3
 _CODIGO = re.compile(r"^[A-Za-z0-9_-]+$")
 _FALLIDOS = {"FAILED", "CANCELLED", "CANCEL_REQUESTED"}
@@ -35,6 +36,8 @@ def cargar_zonas(path: str | Path) -> dict[str, Any]:
     for k in ("fecha_inicio", "fecha_fin", "zonas"):
         if k not in data:
             raise ValueError(f"Falta '{k}' en {Path(path).name}.")
+    if data.get("lado_km", 2.56) * 1000 / RESOLUCION_METROS > LADO_PX:
+        raise ValueError(f"lado_km máximo: {LADO_PX * RESOLUCION_METROS / 1000} km ({LADO_PX} px a {RESOLUCION_METROS} m).")
     codigos = [z.get("codigo") for z in data["zonas"]]
     for c in codigos:
         if not isinstance(c, str) or not _CODIGO.match(c):
@@ -59,9 +62,29 @@ def elegir_orbita(escenas: list[dict[str, Any]], pedida: Any, previa: int | None
     return Counter(e["orbita_relativa"] for e in escenas).most_common(1)[0][0]
 
 
-def carpeta_drive(zona: str, anio: str, orbita_rel: int) -> str:
-    # Drive vía Earth Engine no crea subcarpetas anidadas: una carpeta plana por zona/año/órbita.
-    return f"S1_{zona}_{anio}_R{orbita_rel:03d}"
+def nombrar(escenas: list[dict[str, Any]], filas: dict, zona: str) -> dict[str, str]:
+    """system_index -> L001_01. Lo ya catalogado conserva su nombre; lo nuevo toma su posición
+    cronológica en la lista completa, o el siguiente número libre si esa posición ya está ocupada."""
+    propios = {si: r["nombre"] for (z, si), r in filas.items() if z == zona}
+    ocupados = set(propios.values())
+    sig = max((int(n.rsplit("_", 1)[1]) for n in ocupados), default=0)
+    nombres = {}
+    for i, e in enumerate(escenas, 1):
+        n = propios.get(e["system_index"]) or f"{zona}_{i:02d}"
+        if e["system_index"] not in propios and n in ocupados:
+            n = f"{zona}_{sig + 1:02d}"
+        sig = max(sig, int(n.rsplit("_", 1)[1]))
+        ocupados.add(n)
+        nombres[e["system_index"]] = n
+    return nombres
+
+
+def exigir_homogeneas(escenas: list[dict[str, Any]]) -> None:
+    malas = [e["system_index"] for e in escenas
+             if (e["orbita"], e["modo"], e["producto"]) != (PASADA, MODO_INSTRUMENTO, PRODUCTO)
+             or "VV" not in (e["polarizaciones"] or [])]
+    if malas:
+        raise ValueError(f"Escenas que no son {PASADA}/{MODO_INSTRUMENTO}/{PRODUCTO}/VV: {malas[:3]}")
 
 
 def leer_catalogo(path: Path) -> dict[tuple[str, str], dict[str, str]]:
@@ -105,29 +128,30 @@ def planificar(ee, data: dict[str, Any], catalogo: Path, zona: str | None = None
     for z in data["zonas"]:
         if zona and z["codigo"] != zona:
             continue
-        aoi = bbox_km(z["latitud"], z["longitud"], data.get("lado_km", 30))
+        aoi = bbox_km(z["latitud"], z["longitud"], data.get("lado_km", 2.56))
+        # la pasada ASCENDENTE se fuerza aquí: no es configurable para este flujo
         cfg = SearchConfig(aoi=aoi, fecha_inicio=data["fecha_inicio"], fecha_fin=data["fecha_fin"],
-                           orbita=str(data.get("orbita", "AMBAS")).upper(), cobertura_completa=True).validate()
+                           orbita="ASCENDENTE", cobertura_completa=True).validate()
         escenas = _con_reintentos(lambda: obtener_resultados(ee, cfg))
         previas = {int(r["orbita_relativa"]) for (zc, _), r in filas.items() if zc == z["codigo"]}
         rel = elegir_orbita(escenas, data.get("orbita_relativa", "AUTO"), min(previas) if len(previas) == 1 else None)
         escenas = [e for e in escenas if e["orbita_relativa"] == rel]
-        print(f"{z['codigo']}: órbita relativa {rel}, {len(escenas)} escenas")
-        for a in sorted({e["fecha_hora_utc"][:4] for e in escenas}):
-            if anio and a != anio:
-                continue
-            pend = [e for e in escenas if e["fecha_hora_utc"][:4] == a and (z["codigo"], e["system_index"]) not in filas]
-            for i in range(0, len(pend), lote):
-                trozo = pend[i:i + lote]
-                if limite:
-                    trozo = trozo[:limite - total]
-                if not trozo:
-                    break
-                total += len(trozo)
-                plan.append({"zona": z["codigo"], "anio": a, "rel": rel, "aoi": aoi, "escala_m": cfg.escala_m,
-                             "carpeta": carpeta_drive(z["codigo"], a, rel), "escenas": trozo})
-            if limite and total >= limite:
-                return plan
+        exigir_homogeneas(escenas)
+        print(f"{z['codigo']}: órbita relativa {rel} ({PASADA}), {len(escenas)} escenas")
+        nombres = nombrar(escenas, filas, z["codigo"])
+        pend = [{**e, "nombre": nombres[e["system_index"]]} for e in escenas
+                if (z["codigo"], e["system_index"]) not in filas and (not anio or e["fecha_hora_utc"][:4] == anio)]
+        for i in range(0, len(pend), lote):
+            trozo = pend[i:i + lote]
+            if limite:
+                trozo = trozo[:limite - total]
+            if not trozo:
+                break
+            total += len(trozo)
+            plan.append({"zona": z["codigo"], "rel": rel, "aoi": aoi, "escala_m": cfg.escala_m,
+                         "carpeta": z["codigo"], "escenas": trozo})
+        if limite and total >= limite:
+            return plan
     return plan
 
 
@@ -149,9 +173,9 @@ def descarga_masiva(ee, data: dict[str, Any], catalogo: Path, zona: str | None =
             e = por_idx[t["system_index"]]
             if not simular:  # una simulación no debe marcar escenas como enviadas
                 filas[(p["zona"], e["system_index"])] = {
-                    "zona": p["zona"], "anio": p["anio"], "fecha_hora_utc": e["fecha_hora_utc"],
+                    "zona": p["zona"], "anio": e["fecha_hora_utc"][:4], "fecha_hora_utc": e["fecha_hora_utc"],
                     "system_index": e["system_index"], "ee_id": e["ee_id"], "orbita": e["orbita"],
-                    "orbita_relativa": p["rel"], "carpeta_drive": p["carpeta"], "archivo": t["archivo"],
+                    "orbita_relativa": p["rel"], "nombre": e["nombre"], "carpeta_drive": p["carpeta"], "archivo": t["archivo"],
                     "task_id": t["task_id"] or "", "estado": t["state"]}
         if not simular:
             guardar_catalogo(catalogo, filas)

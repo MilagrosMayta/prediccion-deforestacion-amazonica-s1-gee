@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone, timedelta
 from typing import Any
 
 from .aoi import aoi_to_ee
-from .constants import COLECCION_SENTINEL1, MODO_INSTRUMENTO, RESOLUCION_METROS
+from .constants import COLECCION_SENTINEL1, MODO_INSTRUMENTO, PRODUCTO, RESOLUCION_METROS
 from .config import SearchConfig
 
 VENTANA_DIAS = 31  # getInfo() falla con >5000 elementos; se consulta por ventanas
@@ -16,9 +16,9 @@ def _filtrar(ee, cfg: SearchConfig, region):
         ee.ImageCollection(COLECCION_SENTINEL1)
         .filterBounds(region)
         .filter(ee.Filter.eq("instrumentMode", MODO_INSTRUMENTO))
+        .filter(ee.Filter.eq("productType", PRODUCTO))
         .filter(ee.Filter.eq("resolution_meters", RESOLUCION_METROS))
         .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
-        .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VH"))
     )
     if cfg.orbita == "ASCENDENTE":
         col = col.filter(ee.Filter.eq("orbitProperties_pass", "ASCENDING"))

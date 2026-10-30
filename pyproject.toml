@@ -19,6 +19,7 @@ local = [
   "xarray>=2025.1",
   "geopandas>=1.1,<2",
   "pandas>=2.2,<4",
+  "pillow>=10",
 ]
 ml = [
   "numpy>=2.0,<3",

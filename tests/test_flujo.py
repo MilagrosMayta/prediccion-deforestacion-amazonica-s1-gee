@@ -7,6 +7,16 @@ from deforest_gee.selection import parsear_seleccion
 from deforest_gee.sentinel1 import _ventanas
 
 
+def test_utm_xy_y_grilla_256():
+    from deforest_gee.aoi import grilla_utm, utm_xy
+    assert utm_xy(-69.0, 0.0, "EPSG:32719") == pytest.approx((500000, 0), abs=1e-6)  # meridiano central
+    pyproj = pytest.importorskip("pyproj")
+    x, y = pyproj.Transformer.from_crs(4326, 32719, always_xy=True).transform(-69.6793, -11.4351)
+    assert utm_xy(-69.6793, -11.4351, "EPSG:32719") == pytest.approx((x, y), abs=0.01)
+    g = grilla_utm({"tipo": "punto_radio", "latitud": -11.4351, "longitud": -69.6793, "radio_km": 1}, 10, 256)
+    assert g["x0"] % 10 == 0 and g["y0"] % 10 == 0 and abs(g["x0"] + 1280 - x) <= 10 and abs(g["y0"] - 1280 - y) <= 10
+
+
 def test_utm_madre_de_dios():
     assert epsg_utm(-69.2, -12.6) == "EPSG:32719"
 

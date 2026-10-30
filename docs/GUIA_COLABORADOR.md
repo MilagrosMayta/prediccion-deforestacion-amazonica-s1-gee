@@ -21,19 +21,18 @@ Tu tarea es **descargar esas imágenes**. El programa de este repositorio hace c
 
 | Código | Zona | Departamento |
 |---|---|---|
-| `MD_IB_01` | Iberia, frente Tahuamanu | Madre de Dios |
-| `MD_IN_01` | Inambari / entorno de La Pampa | Madre de Dios |
-| `UC_NR_01` | Nueva Requena | Ucayali |
-| `UC_MA_01` | Masisea | Ucayali |
+| `L001` | Iberia, frente Tahuamanu | Madre de Dios |
+| `L002` | Inambari / entorno de La Pampa | Madre de Dios |
+| `L003` | Nueva Requena | Ucayali |
+| `L004` | Masisea | Ucayali |
 
-Cada zona es un cuadrado de **30 × 30 km** y se descarga de 2018-01-01 a 2025-12-31.
+Cada zona es un recorte de **256 × 256 píxeles (2,56 × 2,56 km)** y se descarga de 2018-01-01 a 2025-12-31.
 
 ## 3. Cuánto pesa y cuánto tarda (importante)
 
-- Cada imagen pesa unos **110 MB** (son 3 bandas: VV, VH y ángulo de incidencia, a 10 metros de resolución).
-- Cada zona tiene unas **250 imágenes** (por ejemplo, Nueva Requena tiene 246), o sea unos **28 GB por zona**.
-- Las 4 zonas son unos **110 GB** en total.
-- Un Google Drive gratuito tiene **15 GB**. **No alcanza ni para una zona.** Necesitas una de estas opciones:
+- Cada imagen pesa unos **0,3 MB** (una sola banda, VV, de 256 × 256 píxeles a 10 metros). Solo se descargan pasadas ASCENDING, de una única órbita relativa por lugar, modo IW, producto GRD.
+- Cada zona tiene unas **250 imágenes** (por ejemplo, Nueva Requena tiene 246), o sea menos de **100 MB por zona**; el espacio de Drive ya no es un problema.
+- - Un Google Drive gratuito tiene **15 GB**. **No alcanza ni para una zona.** Necesitas una de estas opciones:
   - Comprar **Google One de 200 GB** (alcanza para unas 6 zonas-lote, o todo con margen) o de 2 TB. Cuesta pocos dólares al mes y puedes cancelarlo al terminar.
   - O bajar **una zona a la vez**: cuando una zona termine, la descargas a un disco externo y borras esa carpeta de Drive para liberar espacio. Es más lento y manual.
 - **Tiempo:** cada imagen es una tarea que Google procesa en cola. Una zona completa puede tardar **varias horas**, y las 4 zonas puede ser **más de un día**. No es un error: Google las procesa a su ritmo. Puedes dejar la computadora apagada.
@@ -114,28 +113,28 @@ Debe mostrar `"earth_engine": "OK"` y `"sentinel1_accesible": true`. Si no, revi
 
 ## 8. Descargar las imágenes
 
-Haz **una zona a la vez**, empezando por `UC_NR_01`. Cambia `TU_PROJECT_ID` y el código de zona.
+Haz **una zona a la vez**, empezando por `L003`. Cambia `TU_PROJECT_ID` y el código de zona.
 
 ### 8.1 Simulación (no descarga nada)
 
 ```cmd
-deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona UC_NR_01 --limite 5 --simular
+deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona L003 --limite 5 --simular
 ```
 
 La búsqueda de 8 años tarda unos minutos. Debe mostrar algo así:
 
 ```
-UC_NR_01: órbita relativa 171, 246 escenas
-  S1_UC_NR_01_2018_R171: 5 tareas (simuladas)
+L003: órbita relativa 171, 246 escenas
+  L003: 5 tareas (simuladas)
 ```
 
 ### 8.2 Prueba real con 5 imágenes
 
 ```cmd
-deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona UC_NR_01 --limite 5
+deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona L003 --limite 5
 ```
 
-Pregunta `¿Continuar? [s/N]`: escribe `s` y Enter. Espera unos minutos y revisa tu Drive: debe aparecer la carpeta `S1_UC_NR_01_2018_R171` con 5 archivos `.tif` de ~110 MB. Comprueba también:
+Pregunta `¿Continuar? [s/N]`: escribe `s` y Enter. Espera unos minutos y revisa tu Drive: debe aparecer la carpeta `L003` con 5 archivos `L003_01.tif` … `L003_05.tif`. Comprueba también:
 
 ```cmd
 deforest-gee estado --proyecto TU_PROJECT_ID
@@ -146,14 +145,14 @@ Cuando las 5 digan `COMPLETED`, la prueba salió bien.
 ### 8.3 Descarga completa de la zona
 
 ```cmd
-deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona UC_NR_01
+deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona L003
 ```
 
-Responde `s` a la pregunta. Muestra cuántas escenas va a enviar (unas 240 menos las 5 ya enviadas). Las imágenes se crean en Drive en carpetas `S1_UC_NR_01_<año>_R171`, una por año.
+Responde `s` a la pregunta. Muestra cuántas escenas va a enviar (unas 240 menos las 5 ya enviadas). Las imágenes se crean en Drive en la misma carpeta `L003`, numeradas por fecha (`L003_01`, `L003_02`, …).
 
 ### 8.4 Repite con las otras zonas
 
-Cuando una zona esté completa, repite el comando 8.3 cambiando el código: `UC_MA_01`, `MD_IB_01`, `MD_IN_01`. Si no tienes espacio para todo a la vez, lanza la siguiente zona solo cuando hayas liberado Drive.
+Cuando una zona esté completa, repite el comando 8.3 cambiando el código: `L004`, `L001`, `L002`. Si no tienes espacio para todo a la vez, lanza la siguiente zona solo cuando hayas liberado Drive.
 
 ## 9. Cómo saber si va bien
 
@@ -172,7 +171,7 @@ Muestra cuántas tareas hay en cada estado:
 
 ```cmd
 deforest-gee estado --proyecto TU_PROJECT_ID --reintentar-fallidas
-deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona UC_NR_01
+deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona L003
 ```
 
 El segundo comando solo reenvía lo que falta. **Es seguro repetirlo**: nunca duplica lo ya enviado, porque el avance está en `outputs/catalogo.csv`.

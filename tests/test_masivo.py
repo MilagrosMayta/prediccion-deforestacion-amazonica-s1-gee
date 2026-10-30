@@ -2,8 +2,8 @@ import pytest
 
 from deforest_gee import masivo
 from deforest_gee.config import SearchConfig
-from deforest_gee.masivo import (bbox_km, carpeta_drive, cargar_zonas, descarga_masiva, elegir_orbita,
-                                 guardar_catalogo, leer_catalogo)
+from deforest_gee.masivo import (bbox_km, cargar_zonas, descarga_masiva, elegir_orbita, exigir_homogeneas,
+                                 guardar_catalogo, leer_catalogo, nombrar)
 
 
 def test_bbox_30km_valido():
@@ -22,9 +22,8 @@ def test_auto_elige_la_mas_frecuente_y_respeta_la_previa():
 
 
 def test_carpeta_y_catalogo_atomico(tmp_path):
-    assert carpeta_drive("MD_IB_01", "2019", 3) == "S1_MD_IB_01_2019_R003"
     fila = {"zona": "A", "anio": "2019", "fecha_hora_utc": "x", "system_index": "s1", "ee_id": "e", "orbita": "ASC",
-            "orbita_relativa": 3, "carpeta_drive": "c", "archivo": "s1", "task_id": "t", "estado": "READY"}
+            "orbita_relativa": 3, "nombre": "A_01", "carpeta_drive": "c", "archivo": "s1", "task_id": "t", "estado": "READY"}
     guardar_catalogo(tmp_path / "c.csv", {("A", "s1"): fila})
     assert set(leer_catalogo(tmp_path / "c.csv")) == {("A", "s1")}
     assert not (tmp_path / "c.csv.tmp").exists()
@@ -45,7 +44,7 @@ def test_zona_invalida(tmp_path, zona):
 
 def _escena(i, anio="2019", rel=3):
     return {"ee_id": f"COPERNICUS/S1_GRD/{i}", "system_index": i, "fecha_hora_utc": f"{anio}-01-{i[-2:]}T00:00:00Z",
-            "orbita": "ASCENDING", "orbita_relativa": rel}
+            "orbita": "ASCENDING", "orbita_relativa": rel, "modo": "IW", "producto": "GRD", "polarizaciones": ["VV", "VH"]}
 
 
 @pytest.fixture
@@ -71,8 +70,28 @@ DATA = {"fecha_inicio": "2019-01-01", "fecha_fin": "2019-12-31", "orbita_relativ
 def test_dos_zonas_con_la_misma_escena_se_exportan_ambas(falso_ee, tmp_path):
     cat = tmp_path / "c.csv"
     assert descarga_masiva(None, DATA, cat) == 6  # 3 escenas x 2 zonas; la de otra órbita no entra
-    assert {(p, c) for p, c, _ in falso_ee} == {("A", "S1_A_2019_R003"), ("B", "S1_B_2019_R003")}
+    assert {(p, c) for p, c, _ in falso_ee} == {("A", "A"), ("B", "B")}
+    assert {r["nombre"] for r in leer_catalogo(cat).values()} == {"A_01", "A_02", "A_03", "B_01", "B_02", "B_03"}
     assert len(leer_catalogo(cat)) == 6
+
+
+def test_nombres_estables_y_sin_choques():
+    esc = [{"system_index": s} for s in ("a", "b", "c")]
+    assert nombrar(esc, {}, "L001") == {"a": "L001_01", "b": "L001_02", "c": "L001_03"}
+    filas = {("L001", "c"): {"nombre": "L001_01"}}  # c ya salió como _01: lo nuevo no puede repetirlo
+    n = nombrar(esc, filas, "L001")
+    assert n["c"] == "L001_01" and len({*n.values()}) == 3
+
+
+def test_homogeneas_rechaza_descendente_y_lado_grande(tmp_path):
+    e = _escena("S_01")
+    exigir_homogeneas([e])
+    with pytest.raises(ValueError):
+        exigir_homogeneas([{**e, "orbita": "DESCENDING"}])
+    p = tmp_path / "z.json"
+    p.write_text('{"fecha_inicio":"2018-01-01","fecha_fin":"2018-02-01","lado_km":3,"zonas":[]}')
+    with pytest.raises(ValueError, match="lado_km"):
+        cargar_zonas(p)
 
 
 def test_reanudar_no_repite_y_limite_corta(falso_ee, tmp_path):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +95,37 @@ def centro_aoi(spec: dict[str, Any]) -> tuple[float, float]:
 def epsg_utm(lon: float, lat: float) -> str:
     zona = int((lon + 180) // 6) + 1
     return f"EPSG:{(32600 if lat >= 0 else 32700) + zona}"
+
+
+def utm_xy(lon: float, lat: float, crs: str) -> tuple[float, float]:
+    """(este, norte) en metros del CRS UTM dado (Snyder, series de Transverse Mercator; error < 1 mm)."""
+    a, f, k0 = 6378137.0, 1 / 298.257223563, 0.9996
+    e2 = f * (2 - f)
+    ep2 = e2 / (1 - e2)
+    zona = int(crs[-2:])
+    phi, dl = math.radians(lat), math.radians(lon - ((zona - 1) * 6 - 180 + 3))
+    s, c = math.sin(phi), math.cos(phi)
+    n = a / math.sqrt(1 - e2 * s * s)
+    t, cc, aa = math.tan(phi) ** 2, ep2 * c * c, dl * c
+    m = a * ((1 - e2 / 4 - 3 * e2**2 / 64 - 5 * e2**3 / 256) * phi
+             - (3 * e2 / 8 + 3 * e2**2 / 32 + 45 * e2**3 / 1024) * math.sin(2 * phi)
+             + (15 * e2**2 / 256 + 45 * e2**3 / 1024) * math.sin(4 * phi)
+             - (35 * e2**3 / 3072) * math.sin(6 * phi))
+    x = k0 * n * (aa + (1 - t + cc) * aa**3 / 6 + (5 - 18 * t + t * t + 72 * cc - 58 * ep2) * aa**5 / 120) + 500000
+    y = k0 * (m + n * math.tan(phi) * (aa**2 / 2 + (5 - t + 9 * cc + 4 * cc * cc) * aa**4 / 24
+                                       + (61 - 58 * t + t * t + 600 * cc - 330 * ep2) * aa**6 / 720))
+    return x, y + (10_000_000 if lat < 0 else 0)
+
+
+def grilla_utm(spec: dict[str, Any], res: int, px: int) -> dict[str, Any]:
+    """Grilla px×px centrada en el AOI y anclada a múltiplos de `res` m en UTM.
+    Es función solo del centro del AOI: todas las fechas de un lugar comparten la misma grilla, píxel a píxel."""
+    lon, lat = centro_aoi(spec)
+    crs = epsg_utm(lon, lat)
+    x, y = utm_xy(lon, lat, crs)
+    mitad = px * res / 2
+    return {"crs": crs, "x0": math.floor((x - mitad) / res) * res, "y0": math.ceil((y + mitad) / res) * res,
+            "res": res, "px": px}
 
 
 def aoi_to_ee(spec: dict[str, Any], ee):

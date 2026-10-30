@@ -12,6 +12,7 @@ from .config import cargar_config
 from .display import mostrar_resultados, mostrar_tareas
 from .exporter import iniciar_exportaciones, listar_tareas
 from .gee_client import autenticar, diagnostico, inicializar
+from .imagenes import exportar_png, verificar_coregistro
 from .local_raster import crear_features_vv_vh, inspeccionar_raster
 from .masivo import actualizar_estados, cargar_zonas, descarga_masiva
 from .manifest import construir_manifiesto, cargar_manifiesto, guardar_manifiesto
@@ -112,6 +113,19 @@ def cmd_resumen_xarray(args):
     print(json.dumps(resumen_xarray(args.archivo), ensure_ascii=False, indent=2))
 
 
+def cmd_verificar_coregistro(args):
+    problemas = verificar_coregistro(args.carpeta)
+    print("
+".join(problemas) or "OK: todos los .tif comparten la misma grilla y son <= 256x256.")
+    if problemas:
+        sys.exit(1)
+
+
+def cmd_exportar_png(args):
+    creados = exportar_png(args.carpeta, args.salida, args.vmin, args.vmax)
+    print(f"{len(creados)} PNG en escala de grises guardados en {args.salida}")
+
+
 def construir_parser():
     p = argparse.ArgumentParser(
         prog="deforest-gee",
@@ -177,6 +191,17 @@ def construir_parser():
     s.add_argument("--entrada", required=True)
     s.add_argument("--salida", required=True)
     s.set_defaults(func=cmd_features)
+
+    s = sub.add_parser("verificar-coregistro", help="Comprobar que los .tif de una carpeta (un lugar) comparten grilla y son <=256x256.")
+    s.add_argument("--carpeta", required=True)
+    s.set_defaults(func=cmd_verificar_coregistro)
+
+    s = sub.add_parser("exportar-png", help="Convertir los .tif de un lugar a PNG gris (solo la matriz, sin ejes).")
+    s.add_argument("--carpeta", required=True)
+    s.add_argument("--salida", required=True)
+    s.add_argument("--vmin", type=float, default=-25.0, help="dB que se mapea a negro (fijo para toda la serie).")
+    s.add_argument("--vmax", type=float, default=0.0, help="dB que se mapea a blanco.")
+    s.set_defaults(func=cmd_exportar_png)
 
     s = sub.add_parser("normalizar-aoi", help="Normalizar un vector a GeoJSON EPSG:4326 con geopandas.")
     s.add_argument("--entrada", required=True)

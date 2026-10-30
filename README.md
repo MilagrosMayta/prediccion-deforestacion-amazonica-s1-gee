@@ -9,7 +9,7 @@ Esta versión prioriza un flujo reproducible por **línea de comandos** usando P
 - autenticarse e inicializar Earth Engine con un proyecto de Google Cloud;
 - definir un área de interés por punto+radio, bounding box o GeoJSON;
 - consultar escenas Sentinel-1 GRD;
-- restringir la búsqueda a modo IW, polarización VV+VH, resolución de 10 m y órbita ascendente/descendente/ambas;
+- restringir la búsqueda a modo IW, producto GRD, polarización VV, resolución de 10 m y órbita ascendente (en `descarga-masiva`, siempre ASCENDING y una sola órbita relativa por lugar);
 - guardar un manifiesto JSON reproducible de cada búsqueda;
 - iniciar exportaciones GeoTIFF a Google Drive;
 - revisar el estado de las tareas de exportación;
@@ -34,7 +34,7 @@ Sentinel-1 SAR
       ↓
 Google Earth Engine
       ↓
-Filtro homogéneo: IW + VV/VH + 10 m + órbita
+Filtro homogéneo: IW + GRD + VV + 10 m + órbita
       ↓
 Manifiesto JSON de búsqueda
       ↓
@@ -144,12 +144,14 @@ Las zonas, el periodo y el tamaño del recuadro están en `config/zonas.json`. C
 ```cmd
 deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --limite 5 --simular
 deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --limite 5
-deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona UC_NR_01
+deforest-gee descarga-masiva --proyecto TU_PROJECT_ID --zona L003
 deforest-gee estado --proyecto TU_PROJECT_ID --reintentar-fallidas
 ```
 
 - Órbita relativa `AUTO`: se elige la más frecuente de cada zona y se conserva en las siguientes corridas.
-- Carpetas de Drive (planas, Earth Engine no crea subcarpetas): `S1_<zona>_<año>_R<órbita>`.
+- Una carpeta de Drive por lugar (`L001`, `L002`…) y archivos `L001_01.tif`, `L001_02.tif`… por orden de fecha. El número queda guardado en el catálogo y no cambia; una escena que aparezca después recibe el siguiente número libre (el orden cronológico real está en la columna `fecha_hora_utc`).
+- Recorte de 256×256 px (2,56 km a 10 m) en UTM, anclado a múltiplos de 10 m (`crsTransform`): todas las fechas de un lugar comparten la grilla exacta.
+- Después de descargar: `deforest-gee verificar-coregistro --carpeta L001` y `deforest-gee exportar-png --carpeta L001 --salida png/L001` (PNG de 1 canal, solo la matriz; los dB se escalan con límites fijos -25..0 para toda la serie).
 - `outputs/catalogo.csv` registra cada escena enviada; repetir el comando no duplica. Para repartir el trabajo entre colaboradores, cada uno usa `--zona` con zonas distintas.
 - `estado` copia al catálogo el estado real de las tareas; con `--reintentar-fallidas` las fallidas se reenvían en la siguiente corrida.
 
