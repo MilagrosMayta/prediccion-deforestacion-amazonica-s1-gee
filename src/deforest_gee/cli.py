@@ -115,8 +115,7 @@ def cmd_resumen_xarray(args):
 
 def cmd_verificar_coregistro(args):
     problemas = verificar_coregistro(args.carpeta)
-    print("
-".join(problemas) or "OK: todos los .tif comparten la misma grilla y son <= 256x256.")
+    print("\n".join(problemas) or "OK: todos los .tif comparten la misma grilla y son <= 256x256.")
     if problemas:
         sys.exit(1)
 
